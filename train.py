@@ -9,6 +9,8 @@ import ray
 from worker import GlobalBuffer, Learner, Actor
 import configs
 
+from datetime import datetime
+
 os.environ["OMP_NUM_THREADS"] = "1"
 torch.manual_seed(0)
 np.random.seed(0)
@@ -16,6 +18,7 @@ random.seed(0)
 
 
 def main(num_actors=configs.num_actors, log_interval=configs.log_interval):
+    # ray.init(address="auto")
     ray.init()
 
     buffer = GlobalBuffer.remote()
@@ -43,4 +46,7 @@ def main(num_actors=configs.num_actors, log_interval=configs.log_interval):
         print()
 
 if __name__ == '__main__':
+    start_time = datetime.now()
     main()
+    end_time = datetime.now()
+    print('==============Duration: {}==============='.format(end_time - start_time))

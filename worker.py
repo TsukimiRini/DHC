@@ -46,6 +46,7 @@ class GlobalBuffer:
         self.size_buf = np.zeros(episode_capacity, dtype=np.uint)
         self.comm_mask_buf = np.zeros(((local_buffer_capacity+1)*episode_capacity, configs.max_num_agents, configs.max_num_agents), dtype=np.bool)
 
+        self.steps = 0
 
     def __len__(self):
         return self.size
@@ -77,7 +78,7 @@ class GlobalBuffer:
         '''
         data: actor_id 0, num_agents 1, map_len 2, obs_buf 3, act_buf 4, rew_buf 5, hid_buf 6, td_errors 7, done 8, size 9, comm_mask 10
         '''
-        if data[0] >= 12:
+        if data[0] >= 8:
             stat_key = (data[1], data[2])
 
             if stat_key in self.stat_dict:
@@ -186,6 +187,7 @@ class GlobalBuffer:
             return data
 
     def update_priorities(self, idxes: np.ndarray, priorities: np.ndarray, old_ptr: int):
+        self.steps += 1
         """Update priorities of sampled transitions"""
         with self.lock:
 
@@ -223,7 +225,11 @@ class GlobalBuffer:
 
         for key, val in self.stat_dict.copy().items():
             # print('{}: {}/{}'.format(key, sum(val), len(val)))
-            if len(val) == 200 and sum(val) >= 200*configs.pass_rate:
+            # if len(val) == 200 and sum(val) >= 200*configs.pass_rate:
+            loop_len = configs.training_times/((configs.max_map_lenght-configs.init_env_settings[1])/5+configs.max_num_agents+1)-30
+            print("steps:", self.steps)
+            if self.steps >= loop_len:
+                print("key:", key)
                 # add number of agents
                 add_agent_key = (key[0]+1, key[1]) 
                 if add_agent_key[0] <= configs.max_num_agents and add_agent_key not in self.stat_dict:
@@ -233,6 +239,9 @@ class GlobalBuffer:
                     add_map_key = (key[0], key[1]+5) 
                     if add_map_key not in self.stat_dict:
                         self.stat_dict[add_map_key] = []
+
+        if self.steps >= loop_len: 
+            self.steps = 0
                 
         self.env_settings_set = ray.put(list(self.stat_dict.keys()))
 
@@ -270,7 +279,7 @@ class Learner:
         self.model.to(self.device)
         self.tar_model = deepcopy(self.model)
         self.optimizer = Adam(self.model.parameters(), lr=1e-4)
-        self.scheduler = MultiStepLR(self.optimizer, milestones=[200000, 400000], gamma=0.5)
+        self.scheduler = MultiStepLR(self.optimizer, milestones=[10000, 20000], gamma=0.5)
         self.buffer = buffer
         self.counter = 0
         self.last_counter = 0
@@ -297,7 +306,7 @@ class Learner:
 
         while not ray.get(self.buffer.check_done.remote()) and self.counter < configs.training_times:
 
-            for i in range(1, 10001):
+            for i in range(1, 1001):
 
                 data_id = ray.get(self.buffer.get_data.remote())
                 data = ray.get(data_id)

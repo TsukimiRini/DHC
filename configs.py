@@ -24,17 +24,17 @@ action_dim = 5
 ############################################################
 
 # basic training setting
-num_actors = 20
+num_actors = 16
 log_interval = 10
-training_times = 600000
-save_interval=2000
+training_times = 35000
+save_interval=200
 gamma=0.99
 batch_size=192
 learning_starts=50000
 target_network_update_freq=2000
-save_path='./models'
+save_path='/gpfs/share/home/1701111309/working-YAL/DHC/models'
 max_episode_length = 256
-seq_len = 16
+seq_len = 20
 load_model = None
 
 max_episode_length = max_episode_length
@@ -56,7 +56,7 @@ prioritized_replay_beta=0.4
 
 # curriculum learning
 init_env_settings = (1, 10)
-max_num_agents = 2
+max_num_agents = 12
 max_map_lenght = 40
 pass_rate = 0.9
 
